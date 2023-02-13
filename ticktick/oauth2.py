@@ -361,3 +361,41 @@ class OAuth2:
             return new_token_dict
 
         return token_dict  # original token_dict is valid
+
+
+class DiDa365OAuth2(OAuth2):
+    OAUTH_AUTHORIZE_URL = "https://dida365.com/oauth/authorize"
+    OBTAIN_TOKEN_URL = "https://dida365.com/oauth/token"
+
+    def __init__(self, **kwargs):
+        self._oauth_server = None
+        self._oauth_server_host = '127.0.0.1'
+        self._oauth_server_port = '5000'
+        super(DiDa365OAuth2, self).__init__(**kwargs)
+
+    def _post(self, url, **kwargs):
+        response = self.session.post(url, **kwargs, headers={'User-Agent': 'Dida365-Sync/1.0.0'})
+        if response.status_code != 200:
+            raise RuntimeError("POST request could not be completed")
+        try:
+            return response.json()
+        except ValueError:
+            return response.text
+
+    def _request_access_token(self):
+        import os
+        import subprocess
+        path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'oauth_server.py'))
+        cmd = 'python %s --host %s -p %s' % (path, self._oauth_server_host, self._oauth_server_port)
+        self._oauth_server = subprocess.Popen(cmd, shell=True)
+        return super(DiDa365OAuth2, self)._request_access_token()
+
+    def _get_redirected_url(self):
+        import requests
+        url = f"http://{self._oauth_server_host}:{self._oauth_server_port}/get_redirected_url"
+        res = requests.get(url, timeout=60)
+        redirected_url = res.text
+        self._oauth_server.terminate()
+        self._oauth_server.kill()
+        # get the parsed parameters from the url
+        self._code, self._state = self._get_auth_response_parameters(redirected_url)

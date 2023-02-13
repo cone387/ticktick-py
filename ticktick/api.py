@@ -637,3 +637,9 @@ class TickTickClient:
                         deleted = self.state[primary_key][middle_key]
                         del self.state[primary_key][middle_key]
                         return deleted
+
+
+class DiDa365Client(TickTickClient):
+    BASE_URL = 'https://api.dida365.com/api/v2/'
+    OPEN_API_BASE_URL = 'https://api.dida365.com'
+    INITIAL_BATCH_URL = BASE_URL + 'batch/check/0'
